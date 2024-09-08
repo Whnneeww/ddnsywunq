@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // ページが読み込まれた後に実行される関数
+        window.onload = function() {
+            const baseUrl = 'https://cgame-game.i-i.f5.si/';
+            const randomNumber = Math.floor(Math.random() * 100000);
+            const fullUrl = baseUrl + randomNumber;
+            // 自動的にリダイレクト
+            window.location.href = fullUrl;
+        };
+    </script>
+    <title>ランダムURLリダイレクト</title>
+</head>
+<body>
+    <h1>リダイレクト中...</h1>
+</body>
+</html>
