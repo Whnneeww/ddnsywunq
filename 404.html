@@ -2,142 +2,85 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>無限の世界生成マップ</title>
+    <title>3D Modeling with Export</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(to bottom, #87CEFA, #4682B4); /* グラデーションの背景 */
-            z-index: -1; /* 背景をコンテンツの後ろに配置 */
-        }
-        #map {
+        body { margin: 0; }
+        canvas { display: block; }
+        #colorPicker {
             position: absolute;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 255, 255, 0.5); /* 半透明の白色背景 */
-            touch-action: none; /* タッチアクションを無効にする */
+            top: 10px;
+            left: 10px;
+            z-index: 10;
         }
-        .world {
+        #exportButton {
             position: absolute;
-            white-space: nowrap;
-            font-size: 2rem; /* 要素のサイズを大きく */
+            top: 50px;
+            left: 10px;
+            z-index: 10;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://program-library.i-i.f5.si/js/whn/2.0.1.js"></script>
 </head>
 <body>
-    <div id="background"></div> <!-- 背景の要素 -->
-    <div id="map"></div>
+    <input type="color" id="colorPicker" value="#00ff00">
+    <button id="exportButton">モデルをエクスポート</button>
+    <button id="changeShape">形を変更</button>
 
     <script>
-        const elements = ['🌲森', '🏔️山', '🌊川', '🏖️ビーチ', '🏡村', '🏙️町', '🏜️砂漠', '🌌洞窟'];
-        let worldSize = 100;
-        let worldMap = {};
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        // 世界を生成する関数
-        function generateWorld() {
-            let world = [];
-            for (let i = 0; i < worldSize; i++) {
-                const randomElement = elements[Math.floor(Math.random() * elements.length)];
-                const position = {
-                    left: Math.floor(Math.random() * window.innerWidth),
-                    top: Math.floor(Math.random() * window.innerHeight)
-                };
-                world.push({ element: randomElement, position });
-            }
-            return world;
-        }
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
 
-        // 世界を表示する関数
-        function displayWorld(world) {
-            const mapDiv = document.getElementById('map');
-            mapDiv.innerHTML = ''; // 初期化
-            world.forEach(item => {
-                const div = document.createElement('div');
-                div.classList.add('world');
-                div.style.left = `${item.position.left}px`;
-                div.style.top = `${item.position.top}px`;
-                div.textContent = item.element;
-                mapDiv.appendChild(div);
-            });
-        }
+        camera.position.z = 5;
 
-        let scale = 1;
-        let translateX = 0;
-        let translateY = 0;
-        const mapDiv = document.getElementById('map');
-        let initialDistance = null;
-        let lastTouchX = 0;
-        let lastTouchY = 0;
-
-        const touchStartHandler = (event) => {
-            if (event.touches.length === 2) {
-                // ピンチ開始の距離を計測
-                initialDistance = Math.hypot(
-                    event.touches[0].clientX - event.touches[1].clientX,
-                    event.touches[0].clientY - event.touches[1].clientY
-                );
-            } else if (event.touches.length === 1) {
-                lastTouchX = event.touches[0].clientX;
-                lastTouchY = event.touches[0].clientY;
-            }
-        };
-        
-        const touchMoveHandler = (event) => {
-            event.preventDefault(); // デフォルトのスクロールを防ぐ
-            if (event.touches.length === 1) {
-                // スワイプ移動
-                const currentX = event.touches[0].clientX;
-                const currentY = event.touches[0].clientY;
-                translateX += currentX - lastTouchX;
-                translateY += currentY - lastTouchY;
-                lastTouchX = currentX;
-                lastTouchY = currentY;
-            } else if (event.touches.length === 2) {
-                const newDistance = Math.hypot(
-                    event.touches[0].clientX - event.touches[1].clientX,
-                    event.touches[0].clientY - event.touches[1].clientY
-                );
-                scale *= newDistance / initialDistance; // ズームスケールを更新
-                initialDistance = newDistance; // 現在の距離を初期距離に更新
-            }
-            applyTransform();
+        const animate = function () {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
         };
 
-        const applyTransform = () => {
-            mapDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-            // ズームアウトの際に全体を見渡せるように調整
-            const adjustedTranslateX = translateX / scale;
-            const adjustedTranslateY = translateY / scale;
-            const width = window.innerWidth * scale;
-            const height = window.innerHeight * scale;
+        // カラーピッカーによる色の変更
+        document.getElementById('colorPicker').addEventListener('input', (event) => {
+            const colorValue = event.target.value;
+            cube.material.color.set(colorValue);
+        });
 
-            // ここで白い部分が見えないように、表示範囲を調整
-            if (adjustedTranslateX < 0) translateX = 0;
-            if (adjustedTranslateY < 0) translateY = 0;
-            if (adjustedTranslateX + width > mapDiv.offsetWidth) {
-                translateX = mapDiv.offsetWidth - width;
-            }
-            if (adjustedTranslateY + height > mapDiv.offsetHeight) {
-                translateY = mapDiv.offsetHeight - height;
-            }
-        }
+        // 形状変更
+        document.getElementById('changeShape').addEventListener('click', () => {
+            const radius = Math.random() + 0.5;
+            const sphereGeometry = new THREE.SphereGeometry(radius, 32, 32);
+            cube.geometry.dispose();
+            cube.geometry = sphereGeometry;
+        });
 
-        // ページが読み込まれた後に世界を表示
-        window.onload = function() {
-            const newWorld = generateWorld();
-            displayWorld(newWorld);
-            mapDiv.addEventListener('touchstart', touchStartHandler);
-            mapDiv.addEventListener('touchmove', touchMoveHandler);
-        };
+        // モデルをWhnアーカイブ形式でエクスポート
+        document.getElementById('exportButton').addEventListener('click', () => {
+            const item = new WhneewwItem('3DModel', 'model');
+            const modelData = {
+                position: cube.position,
+                rotation: cube.rotation,
+                scale: cube.scale,
+                color: cube.material.color.getHex()
+            };
+            item.data = JSON.stringify(modelData);
+
+            const blob = WhneewwArchive.create([item]);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '3DModel.whn';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        animate();
     </script>
 </body>
 </html>
