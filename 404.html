@@ -37,7 +37,10 @@
             let world = [];
             for (let i = 0; i < worldSize; i++) {
                 const randomElement = elements[Math.floor(Math.random() * elements.length)];
-                const position = `${Math.floor(Math.random() * window.innerWidth)}px ${Math.floor(Math.random() * window.innerHeight)}px`;
+                const position = {
+                    left: Math.floor(Math.random() * window.innerWidth),
+                    top: Math.floor(Math.random() * window.innerHeight)
+                };
                 world.push({ element: randomElement, position });
             }
             return world;
@@ -50,8 +53,8 @@
             world.forEach(item => {
                 const div = document.createElement('div');
                 div.classList.add('world');
-                div.style.left = item.position.split(' ')[0];
-                div.style.top = item.position.split(' ')[1];
+                div.style.left = `${item.position.left}px`;
+                div.style.top = `${item.position.top}px`;
                 div.textContent = item.element;
                 mapDiv.appendChild(div);
             });
@@ -62,14 +65,19 @@
         let translateY = 0;
         const mapDiv = document.getElementById('map');
         let initialDistance = null;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
 
         const touchStartHandler = (event) => {
-            // ピンチ開始の距離を計測
             if (event.touches.length === 2) {
+                // ピンチ開始の距離を計測
                 initialDistance = Math.hypot(
                     event.touches[0].clientX - event.touches[1].clientX,
                     event.touches[0].clientY - event.touches[1].clientY
                 );
+            } else if (event.touches.length === 1) {
+                lastTouchX = event.touches[0].clientX;
+                lastTouchY = event.touches[0].clientY;
             }
         };
         
@@ -77,8 +85,12 @@
             event.preventDefault(); // デフォルトのスクロールを防ぐ
             if (event.touches.length === 1) {
                 // スワイプ移動
-                translateX += event.changedTouches[0].clientX - event.touches[0].clientX;
-                translateY += event.changedTouches[0].clientY - event.touches[0].clientY;
+                const currentX = event.touches[0].clientX;
+                const currentY = event.touches[0].clientY;
+                translateX += currentX - lastTouchX;
+                translateY += currentY - lastTouchY;
+                lastTouchX = currentX;
+                lastTouchY = currentY;
             } else if (event.touches.length === 2) {
                 const newDistance = Math.hypot(
                     event.touches[0].clientX - event.touches[1].clientX,
@@ -87,8 +99,27 @@
                 scale *= newDistance / initialDistance; // ズームスケールを更新
                 initialDistance = newDistance; // 現在の距離を初期距離に更新
             }
-            mapDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            applyTransform();
         };
+
+        const applyTransform = () => {
+            mapDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            // ズームアウトの際に全体を見渡せるように調整
+            const adjustedTranslateX = translateX / scale;
+            const adjustedTranslateY = translateY / scale;
+            const width = window.innerWidth * scale;
+            const height = window.innerHeight * scale;
+
+            // ここで白い部分が見えないように、表示範囲を調整
+            if (adjustedTranslateX < 0) translateX = 0;
+            if (adjustedTranslateY < 0) translateY = 0;
+            if (adjustedTranslateX + width > mapDiv.offsetWidth) {
+                translateX = mapDiv.offsetWidth - width;
+            }
+            if (adjustedTranslateY + height > mapDiv.offsetHeight) {
+                translateY = mapDiv.offsetHeight - height;
+            }
+        }
 
         // ページが読み込まれた後に世界を表示
         window.onload = function() {
